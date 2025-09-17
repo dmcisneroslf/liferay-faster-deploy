@@ -3,6 +3,7 @@ import inspect
 import json
 from os.path import abspath, dirname, exists
 import requests
+from requests.auth import HTTPBasicAuth
 import sys
 import time
 
@@ -18,17 +19,15 @@ jira_base_url = 'https://liferay.atlassian.net'
 # jira_base_url = 'https://liferay-sandbox-822.atlassian.net'
 
 def get_jira_auth():
-    return {
-        'Authorization': 'Basic %s' % b64encode(f'{jira_username}:{jira_password}'.encode('utf-8')).decode('ascii')
-    }
+    return (jira_username, jira_password)
 
 def await_get_request(url, payload):
     print(url, payload)
-    return await_response(lambda: requests.get(url, params=payload, headers=get_jira_auth()))
+    return await_response(lambda: requests.get(url, params=payload, auth=get_jira_auth()))
 
 def await_put_request(url, payload):
     print(url, payload)
-    return await_response(lambda: requests.put(url, json=payload, headers=get_jira_auth()))
+    return await_response(lambda: requests.put(url, json=payload, auth=get_jira_auth()))
 
 def await_response(response_generator):
     r = response_generator()
@@ -52,7 +51,6 @@ def get_issues(jql, fields=[], expand=[], render=False):
 
     payload = {
         'jql': jql,
-        'startAt': start_at,
         'maxResults': 100
     }
 
@@ -61,11 +59,13 @@ def get_issues(jql, fields=[], expand=[], render=False):
             payload['fields'] = ','.join(fields)
         else:
             payload['fields'] = 'issuekey'
+    else:
+        payload['fields'] = '*all'
 
     if len(expand) > 0:
         payload['expand'] = ','.join(expand)
 
-    search_url = f'{jira_base_url}/rest/api/2/search'
+    search_url = f'{jira_base_url}/rest/api/3/search/jql'
 
     r = await_get_request(search_url, payload)
 
@@ -79,9 +79,8 @@ def get_issues(jql, fields=[], expand=[], render=False):
     for issue in response_json['issues']:
         issues[issue['key']] = issue
 
-    while start_at + len(response_json['issues']) < response_json['total']:
-        start_at += len(response_json['issues'])
-        payload['startAt'] = start_at
+    while not response_json['isLast']:
+        payload['nextPageToken'] = response_json['nextPageToken']
 
         r = await_get_request(search_url, payload)
 
@@ -96,6 +95,9 @@ def get_issues(jql, fields=[], expand=[], render=False):
     return issues
 
 def get_issue_changelog(issue_key, last_updated=None):
+    if issue_key.find('CVE') == 0:
+        return []
+
     issue_changelog_file_name = f'releases.{jira_env}.changelog/{issue_key}.json'
 
     if exists(issue_changelog_file_name):
@@ -120,7 +122,6 @@ def get_issue_changelog(issue_key, last_updated=None):
     r = await_get_request(search_url, payload)
 
     if r.status_code != 200:
-        visited_changelogs[issue_key] = []
         return []
 
     response_json = r.json()
@@ -195,3 +196,6 @@ def get_releases(project):
         releases.extend(response_json['values'])
 
     return releases
+
+if __name__ == '__main__':
+    print(get_issue_changelog('TOPIN-108'))

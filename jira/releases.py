@@ -9,7 +9,7 @@ import sys
 
 sys.path.insert(0, dirname(dirname(abspath(inspect.getfile(inspect.currentframe())))))
 
-from jira import get_issues, get_issue_changelog, get_issue_fields, get_releases, jira_env
+from jira import get_issues, get_issue_changelog, get_releases, jira_env
 
 reload_fixed_issues = False
 
@@ -24,6 +24,7 @@ quarterly_releases = {
     '2024.q4': 129,
     '2025.q1': 132,
     '2025.q2': 135,
+    '2025.q3': 138,
 }
 
 old_update_threshold = {
@@ -35,6 +36,7 @@ old_update_threshold = {
     '2024.q4': 125,
     '2025.q1': 129,
     '2025.q2': 132,
+    '2025.q3': 135,
 }
 
 quarterly_updates = { value: key for key, value in quarterly_releases.items() }
@@ -165,6 +167,11 @@ def get_jira_fixed_issues(release_name, release_ids):
     release_issues = {}
 
     fixed_issues = get_issues(query, None, render=True)
+
+    if len(fixed_issues) == 0:
+    	print('No issues found with query %s' % query)
+    	return release_issues
+
     secure_issue_keys = []
 
     for fixed_issue_key, fixed_issue in fixed_issues.items():
