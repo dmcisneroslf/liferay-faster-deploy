@@ -33,25 +33,19 @@ gethotfix() {
 		return 0
 	fi
 
-	local FILE_URL=
-
-	if [[ ${VERSION} == *.q* ]]; then
-		FILE_URL="https://releases-cdn.liferay.com/dxp/hotfix/${VERSION}/${FIX_NAME}.zip"
-	elif [ "" == "${FILES_EE_FOLDER}" ]; then
-		FILE_URL=${FILES_MIRROR}/private/ee/fix-packs/${VERSION}/hotfix/${FIX_NAME}.zip
-	else
-		FILE_URL=${FILES_MIRROR}/${FILES_EE_FOLDER}/fix-packs/${VERSION}/hotfix/${FIX_NAME}.zip
-	fi
+	local FILE_URL="gs://liferay-releases-hotfix/${VERSION}/hotfix/${FIX_NAME}.zip"
 
 	echo "Downloading ${FIX_NAME} to check fixpack_documentation.xml"
 	echo ${FILE_URL}
 	echo
 
-	if [ "${FILES_MIRROR}" == "https://files.liferay.com" ]; then
-		python ${SCRIPT_FOLDER}/scrape_liferay.py ${FILE_URL}
-	else
-		curl -f -O "${FILE_URL}"
+	if ! gcloud auth print-access-token; then
+		gcloud auth login
+		return 1
 	fi
+
+	gcloud storage cp ${FILE_URL} ${HOME}/Downloads/${FIX_NAME}.zip
+	cp ${HOME}/Downloads/${FIX_NAME}.zip .
 }
 
 findbuildurl() {
