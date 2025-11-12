@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         JSM - Dynamic Status Colors
-// @namespace    https://yourcompany.atlassian.net
+// @namespace    https://liferay.atlassian.net
 // @version      1.2
 // @description  Dynamically changes the background color of Jira issue statuses based on their text (case-insensitive, supports data-testid selectors)
 // @match        https://*.atlassian.net/*
